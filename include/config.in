@@ -20,7 +20,7 @@ $MYNAME = 'Interactive Clue Aligner';
 $DISABLE_SAVE = 0;
 $DISABLE_EMAIL = 1;
 
-$USER_MANAGEMENT = 0;
+$USER_MANAGEMENT = 1;
 $ALLOW_NEW_USERS = 0;
 
 ///////////////////////////////////////////////////////////////////

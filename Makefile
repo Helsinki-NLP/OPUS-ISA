@@ -1,33 +1,64 @@
-#
+#-----------------------------------------------------------------------------
 # USAGE
+#-----------------------------------------------------------------------------
 #
-#  make   ................... make files needed for ISA (sentence alignment) 
-#                             with default corpus (1988sven)
-#  make sentalign ........... make ISA files for default corpus
+#  make all ................. make install and setup
+#  make install ............. install ISA in /var/www/html/ISA
+#  make setup ............... make setup for example corpus
+#  make [VARIABLES] setup ... make setup for some other data
 #
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# set the UPLUG, UPLUGSHARE, SENTALIGNER variables below
-# if uplug is not in your path and globally installed
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# VARIABLES to be set:
 #
-#############################################################################
-# set the following variables if necessary:
-#
-# CORPUS ...... name of the corpus (without extension)
+# CORPUS ...... unique name of the corpus (without extension, no subdirectories)
+#               (this will be used to store all data)
 # SRCLANG ..... source language identifier (eg. en, sv, ...)
 # TRGLANG ..... target language identifier (eg. en, sv, ...)
 #
-# UPLUG ....... home directory of your Uplug distribution
-# UPLUGWEB .... location of uplug when accessed from PHP
-# ALIGN ....... type of word alignment to be run (to create clue DBMs)
+# SRC_FILE .... path to the source XML file (gzipped)
+# TRG_FILE .... path to the target XML file (gzipped)
+# ALG_FILE .... path to the sentece alignment file (gzipped)
 #
+#-----------------------------------------------------------------------------
+# EXAMPLE:
 #
-# SRCXML ...... source language document (default: $(CORPUS)$(SRCLANG).xml)
-# TRGXML ...... target language document (default: $(CORPUS)$(TRGLANG).xml)
+# make 	CORPUS=mycorpus-xxyy SRCLANG=xx TRGLANG=yy \
+#	SRC_FILE=xx/mycorpus.xml.gz \
+#	TRG_FILE=yy/mycorpus.xml.gz \
+#	ALG_FILE=xx-yy/mycorpus.xml.gz all
 #
 #############################################################################
 
 VERSION  = 0.1
+
+
+## example corpus and data - change if necessary
+
+CORPUS  = RF-sven-1988
+SRCLANG = en
+TRGLANG = sv
+
+SRC_FILE = example/RF/en/1988.xml.gz
+TRG_FILE = example/RF/sv/1988.xml.gz
+ALG_FILE = example/RF/en-sv/1988.xml.gz
+
+
+## location of html files
+
+WEBHOME = /var/www/html
+ISAHOME = ${WEBHOME}/ISA
+
+
+
+
+INSTALL = install -c
+INSTALL_BIN = ${INSTALL} -m 755
+INSTALL_DATA = ${INSTALL} -m 644
+
+INSTALLFILES = 	${ISAHOME}/index.php \
+		${ISAHOME}/isa.php ${ISAHOME}/isa.css \
+		${ISAHOME}/doc/isa.html \
+		$(patsubst %,${ISAHOME}/%,${wildcard include/*})
+
 
 # UPLUG = path to uplug start script
 # UPLUGSHARE = home directory of shared data
@@ -43,99 +74,67 @@ ifndef SENTALIGNER
   SENTALIGNER = $(shell perl -e 'use Uplug::Config;print find_executable("align2");')
 endif
 
-ifndef LETSMT_CONNECT
-  LETSMT_CONNECT = %%LETSMT_CONNECT%%
-endif
-ifndef LETSMT_URL
-  LETSMT_URL = %%LETSMT_URL%%
-endif
-
-
-ALIGN = basic
-
-
-SLOT    = corpus
-USER    = user
-SRCLANG = en
-TRGLANG = sv
-FILE    = 398
 
 LANGPAIR     = $(SRCLANG)-$(TRGLANG)
 INVLANGPAIR  = $(TRGLANG)-$(SRCLANG)
-
-CORPUS       = corpora/${SLOT}_${LANGPAIR}_$(subst /,_,${FILE})
-DATADIR      = ${CORPUS}
-
-## resource path in the LetsMT repository
-# SRC_RESOURCE = ${SLOT}/${USER}/xml/${SRCLANG}/${FILE}.xml
-# TRG_RESOURCE = ${SLOT}/${USER}/xml/${TRGLANG}/${FILE}.xml
-ALG_RESOURCE = ${SLOT}/${USER}/xml/${LANGPAIR}/${FILE}.xml
+DATADIR      = corpora/${CORPUS}
 
 ## local files
-SRCRAWXML    = ${DATADIR}/${SRCLANG}.raw
-TRGRAWXML    = ${DATADIR}/${TRGLANG}.raw
 SRCXML       = ${DATADIR}/${SRCLANG}.xml
 TRGXML       = ${DATADIR}/${TRGLANG}.xml
 
-SENTALIGN    = ${CORPUS}.ces
-SENTALIGNIDS = ${CORPUS}.ids
+SENTALIGN    = ${DATADIR}.ces
+SENTALIGNIDS = ${DATADIR}.ids
 
 # configuration files
 CONFIG       = $(DATADIR)/config.inc
 ISACONFIG    = $(DATADIR)/config.isa
 
 
-all: $(DATADIR) $(SRCXML) $(TRGXML) $(SENTALIGN) $(CONFIG)
+all: 	install setup
+
+setup:	${ISAHOME}/$(SRCXML) ${ISAHOME}/$(TRGXML) \
+	${ISAHOME}/$(SENTALIGN) \
+	${ISAHOME}/$(CONFIG)
+
+install: ${INSTALLFILES} ${ISAHOME}/$(DATADIR)
 
 
-$(DATADIR):
-	mkdir -p corpora
-	chmod +s corpora
-	mkdir -p $(DATADIR)
-#	mkdir -p $(DATADIR)/data/runtime
-
-
-$(SRCRAWXML): $(SENTALIGN)
+${INSTALLFILES}: ${ISAHOME}/%: %
 	mkdir -p ${dir $@}
-	( s=`grep -o 'fromDoc="[^"]*"' $< | cut -f2 -d'"'`; \
-	  echo "--$$s--"; \
-	  ${LETSMT_CONNECT} -X GET \
-	  "${LETSMT_URL}/storage/${SLOT}/${USER}/xml/$$s?uid=${USER}&archive=0&action=download" \
-	  > $@; )
+	${INSTALL_DATA} $< $@
 
-$(TRGRAWXML): $(SENTALIGN)
+${ISAHOME}/$(DATADIR):
+	mkdir -p $(dir $@)
+	chown www-data:www-data $(dir $@)
+	chmod +s $(dir $@)
+	mkdir -p $@
+	chown www-data:www-data $@
+
+
+${ISAHOME}/$(SENTALIGN): ${ALG_FILE}
 	mkdir -p ${dir $@}
-	( t=`grep -o 'toDoc="[^"]*"' $< | cut -f2 -d'"'`; \
-	  echo "--$$t--"; \
-	  ${LETSMT_CONNECT} -X GET \
-	  "${LETSMT_URL}/storage/${SLOT}/${USER}/xml/$$t?uid=${USER}&archive=0&action=download" \
-	  > $@; )
+	gzip -cd $< > $@
 
-$(SENTALIGN):
+
+${ISAHOME}/$(SRCXML): $(SRC_FILE)
 	mkdir -p ${dir $@}
-	${LETSMT_CONNECT} -X GET \
-		"${LETSMT_URL}/storage/${ALG_RESOURCE}?uid=${USER}&archive=0&action=download" \
-		> $@
-
-
-$(SRCXML): $(SRCRAWXML)
-	mkdir -p ${dir $@}
-	cat $< | grep -v '<time ' |\
+	zcat $< | grep -v '<time ' |\
 	$(UPLUG) pre/tok -l ${SRCLANG} -out $@
 
 #	$(UPLUG) pre/tok -l ${SRCLANG} -in $< -out $@
 
-$(TRGXML): $(TRGRAWXML)
+${ISAHOME}/$(TRGXML): $(TRG_FILE)
 	mkdir -p ${dir $@}
-	cat $< | grep -v '<time ' |\
+	zcat $< | grep -v '<time ' |\
 	$(UPLUG) pre/tok -l ${TRGLANG} -out $@
 
 #	$(UPLUG) pre/tok -l ${TRGLANG} -in $< -out $@
 
 
-$(CONFIG): $(DATADIR)/%.inc: include/%.in $(SRCXML) $(TRGXML)
+${ISAHOME}/$(CONFIG): ${ISAHOME}/$(DATADIR)/%.inc: include/%.in ${ISAHOME}/$(SRCXML) ${ISAHOME}/$(TRGXML)
 	sed 's#%%IDFILE%%#$(SENTALIGNIDS)#' $< |\
-	sed 's#%%DATADIR%%#$(DATADIR)#' |\
+	sed 's#%%DATADIR%%#${DATADIR}#' |\
 	sed 's#%%SRCXML%%#$(SRCXML)#' |\
 	sed 's#%%TRGXML%%#$(TRGXML)#' |\
 	sed 's#%%BITEXT%%#$(SENTALIGN)#' |\
@@ -145,9 +144,9 @@ $(CONFIG): $(DATADIR)/%.inc: include/%.in $(SRCXML) $(TRGXML)
 	sed 's#%%LANGPAIR%%#$(LANGPAIR)#' |\
 	sed 's#%%INVLANGPAIR%%#$(INVLANGPAIR)#' > $@
 
-$(ISACONFIG): $(DATADIR)/%.isa: include/%.in $(SRCXML) $(TRGXML)
+${ISAHOME}/$(ISACONFIG): ${ISAHOME}/$(DATADIR)/%.isa: include/%.in ${ISAHOME}/$(SRCXML) ${ISAHOME}/$(TRGXML)
 	sed 's#%%IDFILE%%#$(SENTALIGNIDS)#' $< |\
-	sed 's#%%DATADIR%%#$(DATADIR)#' |\
+	sed 's#%%DATADIR%%#${DATADIR}#' |\
 	sed 's#%%SRCXML%%#$(SRCXML)#' |\
 	sed 's#%%TRGXML%%#$(TRGXML)#' |\
 	sed 's#%%BITEXT%%#$(SENTALIGN)#' |\

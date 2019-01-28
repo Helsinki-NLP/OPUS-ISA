@@ -36,7 +36,7 @@ function get_best_hard_tag($srcxml,$trgxml,$sentalign){
 
 function read_tag_file($xmlfile,$language){
 
-//    echo "read $language ...<br>";
+  // echo "read $language - $xmlfile...<br>";
 
     $filebase = str_replace('.xml','',$xmlfile);
     $tag_file = $filebase . '.tags';

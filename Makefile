@@ -3,12 +3,13 @@
 #-----------------------------------------------------------------------------
 #
 #  make all ................. make install and setup
-#  make install ............. install ISA in /var/www/html/ISA
+#  make install ............. install ISA in /var/www/html/${ISAROOT}
 #  make setup ............... make setup for example corpus
 #  make [VARIABLES] setup ... make setup for some other data
 #
 # VARIABLES to be set:
 #
+# ISAROOT ..... root dir for web data
 # CORPUS ...... unique name of the corpus (without extension, no subdirectories)
 #               (this will be used to store all data)
 # SRCLANG ..... source language identifier (eg. en, sv, ...)
@@ -45,7 +46,8 @@ ALG_FILE = example/RF/en-sv/1988.xml.gz
 ## location of html files
 
 WEBHOME = /var/www/html
-ISAHOME = ${WEBHOME}/ISA
+ISAROOT = ISA
+ISAHOME = ${WEBHOME}/${ISAROOT}
 
 
 

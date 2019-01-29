@@ -121,17 +121,21 @@ ${ISAHOME}/$(SENTALIGN): ${ALG_FILE}
 
 ${ISAHOME}/$(SRCXML): $(SRC_FILE)
 	mkdir -p ${dir $@}
+ifeq ($(shell zgrep '<w' ${SRC_FILE}),)
 	zcat $< | grep -v '<time ' |\
 	$(UPLUG) pre/tok -l ${SRCLANG} -out $@
-
-#	$(UPLUG) pre/tok -l ${SRCLANG} -in $< -out $@
+else
+	zcat $< | grep -v '<time ' > $@
+endif
 
 ${ISAHOME}/$(TRGXML): $(TRG_FILE)
 	mkdir -p ${dir $@}
+ifeq ($(shell zgrep '<w' ${SRC_FILE}),)
 	zcat $< | grep -v '<time ' |\
 	$(UPLUG) pre/tok -l ${TRGLANG} -out $@
-
-#	$(UPLUG) pre/tok -l ${TRGLANG} -in $< -out $@
+else
+	zcat $< | grep -v '<time ' > $@
+endif
 
 
 ${ISAHOME}/$(CONFIG): ${ISAHOME}/$(DATADIR)/%.inc: include/%.in ${ISAHOME}/$(SRCXML) ${ISAHOME}/$(TRGXML)
